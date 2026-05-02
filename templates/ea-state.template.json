@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "operator": {
+    "name": "",
+    "role": "",
+    "timezone": "America/Sao_Paulo",
+    "current_focus": [],
+    "energy_pattern": "",
+    "communication_style": ""
+  },
+  "mode": {
+    "current": "active_day",
+    "since": null,
+    "previous": null,
+    "valid_modes": [
+      "morning_brief",
+      "active_day",
+      "meeting_prep",
+      "meeting_debrief",
+      "weekly_review",
+      "quarterly_review",
+      "end_of_day"
+    ]
+  },
+  "today": {
+    "date": null,
+    "meetings": [],
+    "commitments_due": [],
+    "deferred_items": [],
+    "energy_budget_remaining": "high",
+    "top_3_priorities": []
+  },
+  "rituals": {
+    "last_morning_brief": null,
+    "last_eod_snapshot": null,
+    "last_weekly_review": null,
+    "last_quarterly_review": null,
+    "next_weekly_due": null,
+    "next_quarterly_due": null,
+    "last_inbox_zero": null
+  },
+  "noise_filters": {
+    "auto_archive_patterns": [],
+    "auto_defer_patterns": [],
+    "vip_senders": [],
+    "vip_keywords": [],
+    "learning_log": []
+  },
+  "stats": {
+    "compression_events": 0,
+    "skills_invoked_today": {},
+    "subagents_invoked_today": {}
+  }
+}

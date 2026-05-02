@@ -1,0 +1,4 @@
+# Runtime artifacts produced by hooks
+state/.hooks.log
+state/.snapshots/
+.claude/settings.local.json

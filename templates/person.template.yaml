@@ -1,0 +1,29 @@
+id: ""                       # slug, ex: "laiane"
+name: ""
+role: ""
+relationship: ""             # colega | gestor | reporte | cliente | parceiro | familiar
+gworkspace_email: ""
+
+context: ""                  # 1-2 frases: o que esta pessoa significa pro operador
+
+projects:                    # projetos compartilhados (match com state/projects/)
+  - id: ""
+    role: ""
+
+last_contact:
+  date: null
+  channel: ""                # email | gchat | meeting | call | in-person
+  topic: ""
+
+open_threads: []             # conversas em aberto que precisam fechar
+# - { since: "2026-04-20", topic: "feedback design X", next_step: "..." }
+
+commitments:
+  by_operator_to_them: []    # IDs em commitments/made-by-operator.json
+  by_them_to_operator: []    # IDs em commitments/made-to-operator.json
+
+cadence:                     # ritmo esperado de contato
+  expected_days: null        # ex: 14 = a cada 2 semanas
+  last_warned: null          # quando o EA avisou que tava silencioso demais
+
+notes: ""                    # contexto pessoal: aniversário, contexto familiar, prefs

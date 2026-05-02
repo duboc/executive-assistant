@@ -1,0 +1,27 @@
+id: ""                       # slug-curto, usado como filename
+name: ""                     # nome humano
+status: incubating           # incubating | active | shipping | iterating | dormant | sunset
+north_star: ""               # 1 frase: o que precisa estar verdadeiro pra projeto valer a pena
+next_action: ""              # próxima ação concreta, ≤1 dia de trabalho
+blockers: []                 # bloqueios conhecidos
+open_decisions: []           # decisões pendentes que destravam o projeto
+
+stakeholders:                # quem importa pro projeto
+  - id: ""                   # match com state/people/<id>.yaml
+    role: ""
+    interest: ""
+
+last_touched: null           # ISO timestamp da última atividade
+created_at: null
+target_completion: null
+
+recent_decisions: []         # ADRs informais
+# - { date: "2026-04-28", decision: "...", rationale: "...", reversible: true }
+
+artifacts: []                # links: gdocs, gdrive, github, figma, etc
+
+related_projects: []         # outros projetos que dependem ou bloqueiam este
+
+dormancy:
+  threshold_days: 14         # após N dias sem touch → router pergunta status
+  warned_at: null

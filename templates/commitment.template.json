@@ -1,0 +1,19 @@
+{
+  "id": "",
+  "kind": "made_by_operator",
+  "counterparty_person_id": "",
+  "description": "",
+  "source": {
+    "channel": "",
+    "ref": "",
+    "extracted_at": null
+  },
+  "due": {
+    "declared": null,
+    "inferred": null,
+    "confidence": "high"
+  },
+  "status": "open",
+  "linked_project_id": null,
+  "history": []
+}
