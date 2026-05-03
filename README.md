@@ -4,9 +4,17 @@ Chief-of-staff digital sobre Google Workspace. Orquestrador central + subagents
 especializados + skills de workflow + hooks que transformam disciplina executiva
 em infraestrutura.
 
+**Roda nos dois runtimes:**
+
+- **Claude Code** — config em `.claude/settings.json`, subagents em `.claude/agents/`
+- **Gemini CLI** — config em `.gemini/settings.json`, subagents nativos em `.gemini/agents/`, policy isolation em `.gemini/policies/ea-policies.toml`
+
+Skills, hooks e estado são compartilhados.
+
 > **Premissa de ambiente:** as skills de Google Workspace (`gdocs`, `gdrive`,
-> `gcalendar`, `gchat`, `gsheets`, `gslides`) já estão disponíveis no Claude
-> Code do operador. Os subagents/skills aqui apenas as compõem.
+> `gcalendar`, `gchat`, `gsheets`, `gslides`) já estão disponíveis no runtime
+> do operador (como skill nativa, MCP server, ou extension). Os subagents/skills
+> aqui apenas as compõem.
 
 ## Arquitetura — visão de 30 segundos
 
@@ -14,15 +22,50 @@ em infraestrutura.
 ORQUESTRADOR (ea-orchestrator skill)
    ├─ SKILLS de workflow:    daily-brief, weekly-review, noise-cancel,
    │                         meeting-workflow, quarterly-review
-   ├─ SUBAGENTS:             inbox-triager, meeting-prepper, meeting-debriefer,
+   ├─ SUBAGENTS (8):         inbox-triager, meeting-prepper, meeting-debriefer,
    │                         project-router, project-tracker, commitment-tracker,
    │                         relationship-keeper, draft-composer
    ├─ SKILLS pré-existentes: gdocs · gdrive · gcalendar · gchat · gsheets · gslides
-   └─ HOOKS:                 SessionStart, UserPromptSubmit, PreToolUse,
-                             PostToolUse, Stop, PreCompact, SessionEnd
+   └─ HOOKS (12 scripts):    SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/
+                             Stop/PreCompact/SessionEnd  (Claude Code)
+                             SessionStart/BeforeAgent/BeforeToolSelection/BeforeTool/
+                             AfterTool/AfterModel/PreCompress/SessionEnd  (Gemini CLI)
 ```
 
 Detalhe completo: [ARCHITECTURE.md](./ARCHITECTURE.md).
+
+## Quickstart por runtime
+
+### Rodando no Claude Code
+
+1. Abra uma sessão neste diretório.
+2. Edite `state/ea-state.json` com seus dados de operador.
+3. Adicione projetos em `state/projects/<id>.yaml` e atualize `state/projects/_index.json`.
+4. Adicione pessoas-chave em `state/people/<id>.yaml`.
+5. Diga "bom dia" — o hook `bootstrap.sh` carrega estado e infere modo. Para ritual semanal, rode `/weekly-review`.
+
+### Rodando no Gemini CLI
+
+1. Sincronize skills (idempotente):
+   ```bash
+   ./scripts/sync-runtimes.sh
+   ```
+2. Inicie `gemini` neste diretório. `.gemini/settings.json` carrega automaticamente:
+   - **Hooks** (mesmos scripts que Claude Code, referenciados via `$GEMINI_PROJECT_DIR/.claude/hooks/...`)
+   - **Subagents** em `.gemini/agents/` (8 hand-tuned com handoffs estruturados)
+   - **Agent overrides** com `maxTurns`/`maxTimeMinutes` por subagent
+3. Para isolation forte, copie `.gemini/policies/ea-policies.toml` para `~/.gemini/policies/` (ou aponte via setting do Policy Engine). Ele restringe o que cada subagent pode escrever.
+4. Invoque subagent explicitamente: `@meeting-prepper preparar 1:1 com Laiane às 10h` ou deixe a delegação automática decidir.
+
+### Diferença de orquestração
+
+| | Claude Code | Gemini CLI |
+|---|---|---|
+| Subagent → subagent | ✅ permitido | ❌ proibido (recursion guard) |
+| Coordenação | subagent ou orquestrador | **sempre** orquestrador |
+| Padrão de output | livre | **handoffs[]** estruturado obrigatório |
+
+Os arquivos em `.gemini/agents/` já refletem esse padrão.
 
 ## Estrutura de diretórios
 

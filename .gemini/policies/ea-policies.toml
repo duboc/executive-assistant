@@ -1,0 +1,139 @@
+# Executive Assistant — Policy Engine rules
+#
+# Usa Policy Engine TOML do Gemini CLI para isolar o que cada subagent pode
+# fazer. Princípio: query subagents (read-only) NÃO podem escrever; writer
+# subagents só podem escrever no diretório que lhes pertence.
+#
+# Ref: https://geminicli.com/docs/reference/policy-engine
+
+# ============================================================
+# Hooks shell scripts — sempre permitidos (são código nosso)
+# ============================================================
+
+[[rules]]
+name = "Allow EA hooks to run"
+description = "Hook scripts em .claude/hooks/ podem rodar livremente; eles atualizam o estado interno."
+action = "allow"
+toolName = "run_shell_command"
+commandPrefix = ".claude/hooks/"
+
+# ============================================================
+# Query subagents — read-only sobre state/
+# ============================================================
+
+[[rules]]
+name = "inbox-triager: read-only"
+description = "Triager apenas lê filtros do estado e classifica. Nunca escreve."
+subagent = "inbox-triager"
+action = "deny"
+toolName = "write_file"
+
+[[rules]]
+name = "project-router: read-only"
+description = "Router decide rotas. project-tracker é quem grava."
+subagent = "project-router"
+action = "deny"
+toolName = "write_file"
+
+[[rules]]
+name = "meeting-prepper: write only to meetings dir"
+description = "Prep grava o doc de prep no diretório de meetings; bloqueia escrita em commitments/projects/people."
+subagent = "meeting-prepper"
+action = "deny"
+toolName = "write_file"
+pathPrefix = "state/commitments/"
+
+[[rules]]
+subagent = "meeting-prepper"
+action = "deny"
+toolName = "write_file"
+pathPrefix = "state/projects/"
+
+[[rules]]
+subagent = "meeting-prepper"
+action = "deny"
+toolName = "write_file"
+pathPrefix = "state/people/"
+
+# ============================================================
+# Writer subagents — escrita restrita ao próprio domínio
+# ============================================================
+
+[[rules]]
+name = "project-tracker: only writes state/projects/"
+description = "Único subagent autorizado a mutar state/projects/."
+subagent = "project-tracker"
+action = "deny"
+toolName = "write_file"
+pathPrefix = "state/commitments/"
+
+[[rules]]
+subagent = "project-tracker"
+action = "deny"
+toolName = "write_file"
+pathPrefix = "state/people/"
+
+[[rules]]
+name = "commitment-tracker: only writes state/commitments/"
+subagent = "commitment-tracker"
+action = "deny"
+toolName = "write_file"
+pathPrefix = "state/projects/"
+
+[[rules]]
+subagent = "commitment-tracker"
+action = "deny"
+toolName = "write_file"
+pathPrefix = "state/people/"
+
+[[rules]]
+name = "relationship-keeper: only writes state/people/"
+subagent = "relationship-keeper"
+action = "deny"
+toolName = "write_file"
+pathPrefix = "state/projects/"
+
+[[rules]]
+subagent = "relationship-keeper"
+action = "deny"
+toolName = "write_file"
+pathPrefix = "state/commitments/"
+
+# ============================================================
+# Draft composer — nunca dispara envio
+# ============================================================
+
+[[rules]]
+name = "draft-composer: cannot send"
+description = "Drafts SEMPRE passam por aprovação do operador antes do envio."
+subagent = "draft-composer"
+action = "deny"
+toolName = "mcp_gmail_send_message"
+
+[[rules]]
+subagent = "draft-composer"
+action = "deny"
+toolName = "mcp_gchat_send_message"
+
+# ============================================================
+# Meeting-debriefer — somente seu diretório de meetings
+# ============================================================
+
+[[rules]]
+name = "meeting-debriefer: only writes meetings dir"
+subagent = "meeting-debriefer"
+action = "deny"
+toolName = "write_file"
+pathPrefix = "state/projects/"
+
+[[rules]]
+subagent = "meeting-debriefer"
+action = "deny"
+toolName = "write_file"
+pathPrefix = "state/commitments/"
+
+[[rules]]
+subagent = "meeting-debriefer"
+action = "deny"
+toolName = "write_file"
+pathPrefix = "state/people/"

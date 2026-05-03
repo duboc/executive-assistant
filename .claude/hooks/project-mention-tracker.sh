@@ -8,12 +8,7 @@ HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$HOOK_DIR/lib/common.sh"
 
 payload="$(cat)"
-
-text="$(echo "$payload" | jq -r '
-  (.transcript // [] | last | .content // empty),
-  (.last_message // empty),
-  (.message // empty)
-' 2>/dev/null | tr '\n' ' ')"
+text="$(ea_payload_last_text "$payload")"
 
 if [ -z "$text" ]; then ea_passthrough; exit 0; fi
 

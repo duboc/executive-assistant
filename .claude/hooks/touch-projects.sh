@@ -6,8 +6,8 @@ HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$HOOK_DIR/lib/common.sh"
 
 payload="$(cat)"
-tool="$(echo "$payload" | jq -r '.tool_name // empty')"
-sub="$(echo "$payload" | jq -r '.tool_input.subagent_type // .tool_input.skill // empty')"
+tool="$(ea_payload_tool_name "$payload")"
+sub="$(ea_payload_sub "$payload")"
 
 if [ ! -f "$EA_STATE" ]; then ea_passthrough; exit 0; fi
 

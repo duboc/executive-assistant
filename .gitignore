@@ -1,4 +1,9 @@
 # Runtime artifacts produced by hooks
 state/.hooks.log
 state/.snapshots/
+state/rituals/daily/*.md
+state/rituals/weekly/*.md
+state/rituals/quarterly/*.md
+state/rituals/meetings/*.md
 .claude/settings.local.json
+.gemini/settings.local.json
