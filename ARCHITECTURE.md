@@ -184,15 +184,113 @@ A semântica do Gemini CLI mapeia em Claude Code assim:
 Este repositório implementa:
 
 - `state/` schemas + um state inicial seed
-- `.claude/skills/` 5 skills de workflow
-- `.claude/agents/` 8 subagents
-- `.claude/hooks/` 11 scripts de disciplina
-- `.claude/settings.json` wiring completo
+- `.claude/skills/` 6 skills de workflow (canônicas)
+- `.claude/agents/` 8 subagents (Claude Code)
+- `.claude/hooks/` 12 scripts de disciplina (compartilhados — payload-detect ambos runtimes)
+- `.claude/settings.json` wiring completo Claude Code
+- `.gemini/skills/` espelhado de `.claude/skills/` via `scripts/sync-runtimes.sh`
+- `.gemini/agents/` 8 subagents nativos Gemini CLI (frontmatter + handoffs estruturados)
+- `.gemini/policies/ea-policies.toml` regras de Policy Engine isolando o que cada subagent pode escrever
+- `.gemini/settings.json` wiring Gemini CLI (eventos diferentes, mesmos scripts)
 
 O que **não** está aqui (depende do ambiente):
 
-- As skills pré-existentes de Google Workspace (gdocs, gdrive, gcalendar, gchat,
-  gsheets, gslides). Os subagents/skills aqui assumem que essas estão
-  disponíveis e as referenciam por nome.
+- Skills pré-existentes de Google Workspace (gdocs, gdrive, gcalendar, gchat,
+  gsheets, gslides). Os subagents/skills aqui assumem que estão disponíveis.
 - Webhook do Google Calendar para disparar `meeting_prep`/`meeting_debrief`
-  automaticamente — fica como integração externa que invoca o orquestrador.
+  automaticamente — integração externa que invoca o orquestrador.
+
+## 10. Dual runtime — Claude Code & Gemini CLI
+
+A mesma stack (skills + subagents + hooks) roda nos dois runtimes. Diferenças
+ficam isoladas em três lugares: settings, nomes de eventos de hook, e a forma
+como subagents devolvem trabalho ao orquestrador.
+
+### 10.1 Mapeamento de eventos de hook
+
+| Evento Gemini CLI    | Evento Claude Code  | Script (canônico em `.claude/hooks/`) |
+|----------------------|---------------------|--------------------------------------|
+| SessionStart         | SessionStart        | bootstrap.sh, ritual-check.sh         |
+| BeforeAgent          | UserPromptSubmit    | mode-context.sh                       |
+| BeforeModel          | UserPromptSubmit    | (compartilha; usado raramente)        |
+| BeforeToolSelection  | PreToolUse          | filter-skills-by-mode.sh              |
+| BeforeTool           | PreToolUse          | check-pending-debriefs.sh, enter-review-mode.sh |
+| AfterTool            | PostToolUse         | touch-projects.sh, scan-commitments.sh |
+| AfterModel           | Stop                | promise-detector.sh, project-mention-tracker.sh |
+| PreCompress          | PreCompact          | preserve-crm.sh                       |
+| SessionEnd           | SessionEnd          | eod-snapshot.sh                       |
+| Notification         | Notification        | (não usado no MVP)                    |
+
+`lib/common.sh` resolve `EA_ROOT` de `CLAUDE_PROJECT_DIR` ou `GEMINI_PROJECT_DIR`
+e expõe helpers (`ea_payload_tool_name`, `ea_payload_sub`, `ea_payload_last_text`)
+que normalizam payloads (camelCase do Gemini vs snake_case do Claude Code).
+
+### 10.2 Diferença crítica: subagents Gemini não recursionam
+
+Doc oficial Gemini CLI:
+> "Recursion protection: To prevent infinite loops and excessive token usage,
+> subagents cannot call other subagents."
+
+Em Claude Code subagents podem se chamar (via Skill/Agent tools). Em Gemini
+CLI **não**. O orquestrador (main agent) é quem coordena handoffs.
+
+**Padrão obrigatório nos subagents Gemini:** devolver um campo `handoffs[]`
+no output que o orquestrador lê e despacha. Exemplo do `meeting-debriefer`:
+
+```json
+{
+  "decisions": [...],
+  "actions": [...],
+  "handoffs": [
+    { "to": "subagent:project-router",     "action": "route", "items": ["ACT-001"] },
+    { "to": "subagent:commitment-tracker", "action": "add_batch", "commitments": [...] },
+    { "to": "subagent:relationship-keeper","action": "apply_mutations", "items": [...] },
+    { "to": "operator", "action": "confirm_implicits", "items": [...] }
+  ]
+}
+```
+
+O orquestrador executa os handoffs em ordem. Em Claude Code, esse padrão também
+funciona, mas o subagent ainda **pode** invocar outro diretamente se preciso.
+
+### 10.3 Mapeamento de tools
+
+Subagents declaram tools no frontmatter. Nomes diferem:
+
+| Capacidade        | Claude Code          | Gemini CLI                 |
+|-------------------|----------------------|----------------------------|
+| Read file         | `Read`               | `read_file`                |
+| Write file        | `Write`              | `write_file`               |
+| Edit file         | `Edit`               | `replace` / `edit_file`    |
+| Search            | `Grep`               | `grep_search`              |
+| Glob              | `Glob`               | `glob`                     |
+| Shell             | `Bash(jq:*)`         | `run_shell_command` (granularidade via Policy Engine) |
+| Skill invocation  | `Skill`              | `@<skill-name>` ou auto    |
+| Agent invocation  | `Agent`/`Task`       | `@<agent-name>` ou tool por nome |
+| MCP               | `mcp__server__tool`  | `mcp_server_*` wildcards   |
+
+### 10.4 Fonte da verdade vs cópia
+
+| Asset                    | Fonte canônica                | Espelho                       |
+|--------------------------|-------------------------------|-------------------------------|
+| Skills                   | `.claude/skills/`             | `.gemini/skills/` (via sync)  |
+| Subagents — Claude       | `.claude/agents/`             | (não espelha)                 |
+| Subagents — Gemini       | `.gemini/agents/`             | (não espelha)                 |
+| Hooks                    | `.claude/hooks/`              | (não espelha; Gemini referencia mesmo path) |
+| State                    | `state/`                      | (compartilhado entre runtimes) |
+| Policy (Gemini)          | `.gemini/policies/ea-policies.toml` | (Claude usa `permissions` em settings.json) |
+
+`scripts/sync-runtimes.sh` mantém só skills em sincronia (formato é compatível).
+Subagents são fonte separada porque os modelos de orquestração são diferentes.
+
+### 10.5 Quando atualizar o quê
+
+| Mudança                                    | Editar                                          | Sync? |
+|-------------------------------------------|------------------------------------------------|-------|
+| Lógica de skill (workflow)                | `.claude/skills/<name>/SKILL.md`               | ✅ rodar `scripts/sync-runtimes.sh` |
+| Subagent só Claude                        | `.claude/agents/<name>.md`                     | —     |
+| Subagent só Gemini                        | `.gemini/agents/<name>.md`                     | —     |
+| Hook script                                | `.claude/hooks/<file>.sh`                      | — (referenciado por ambas configs) |
+| Permissão Claude                          | `.claude/settings.json :: permissions.allow`   | —     |
+| Permissão Gemini (granular por subagent)  | `.gemini/policies/ea-policies.toml`            | —     |
+| Wiring de hook em runtime                 | `.claude/settings.json` ou `.gemini/settings.json` | —  |

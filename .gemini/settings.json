@@ -1,0 +1,98 @@
+{
+  "// note": "Gemini CLI settings. Hooks reuse the canonical scripts in .claude/hooks/ — both runtimes read EA_ROOT via their env var. Skills mirror from .claude/skills via scripts/sync-runtimes.sh. Subagents are hand-tuned in .gemini/agents/. Policy rules in .gemini/policies/ea-policies.toml restrict what each subagent can write.",
+
+  "experimental": {
+    "enableAgents": true
+  },
+
+  "agents": {
+    "overrides": {
+      "inbox-triager":         { "enabled": true, "runConfig": { "maxTurns": 8,  "maxTimeMinutes": 5 } },
+      "meeting-prepper":       { "enabled": true, "runConfig": { "maxTurns": 12, "maxTimeMinutes": 8 } },
+      "meeting-debriefer":     { "enabled": true, "runConfig": { "maxTurns": 12, "maxTimeMinutes": 8 } },
+      "project-router":        { "enabled": true, "runConfig": { "maxTurns": 6,  "maxTimeMinutes": 4 } },
+      "project-tracker":       { "enabled": true, "runConfig": { "maxTurns": 6,  "maxTimeMinutes": 4 } },
+      "commitment-tracker":    { "enabled": true, "runConfig": { "maxTurns": 6,  "maxTimeMinutes": 4 } },
+      "relationship-keeper":   { "enabled": true, "runConfig": { "maxTurns": 6,  "maxTimeMinutes": 4 } },
+      "draft-composer":        { "enabled": true, "runConfig": { "maxTurns": 6,  "maxTimeMinutes": 4 } }
+    }
+  },
+
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "name": "ea-bootstrap",   "type": "command", "command": "$GEMINI_PROJECT_DIR/.claude/hooks/bootstrap.sh",   "timeout": 3000 },
+          { "name": "ea-ritual-check","type": "command", "command": "$GEMINI_PROJECT_DIR/.claude/hooks/ritual-check.sh","timeout": 3000 }
+        ]
+      }
+    ],
+
+    "BeforeAgent": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "name": "ea-mode-context", "type": "command", "command": "$GEMINI_PROJECT_DIR/.claude/hooks/mode-context.sh", "timeout": 2000 }
+        ]
+      }
+    ],
+
+    "BeforeToolSelection": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "name": "ea-filter-skills-by-mode", "type": "command", "command": "$GEMINI_PROJECT_DIR/.claude/hooks/filter-skills-by-mode.sh", "timeout": 2000 }
+        ]
+      }
+    ],
+
+    "BeforeTool": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          { "name": "ea-check-pending-debriefs", "type": "command", "command": "$GEMINI_PROJECT_DIR/.claude/hooks/check-pending-debriefs.sh", "timeout": 2000 },
+          { "name": "ea-enter-review-mode",      "type": "command", "command": "$GEMINI_PROJECT_DIR/.claude/hooks/enter-review-mode.sh",      "timeout": 2000 }
+        ]
+      }
+    ],
+
+    "AfterTool": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          { "name": "ea-touch-projects",   "type": "command", "command": "$GEMINI_PROJECT_DIR/.claude/hooks/touch-projects.sh",   "timeout": 2000 },
+          { "name": "ea-scan-commitments", "type": "command", "command": "$GEMINI_PROJECT_DIR/.claude/hooks/scan-commitments.sh", "timeout": 2000 }
+        ]
+      }
+    ],
+
+    "AfterModel": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "name": "ea-promise-detector",         "type": "command", "command": "$GEMINI_PROJECT_DIR/.claude/hooks/promise-detector.sh",         "timeout": 2000 },
+          { "name": "ea-project-mention-tracker",  "type": "command", "command": "$GEMINI_PROJECT_DIR/.claude/hooks/project-mention-tracker.sh",  "timeout": 2000 }
+        ]
+      }
+    ],
+
+    "PreCompress": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "name": "ea-preserve-crm", "type": "command", "command": "$GEMINI_PROJECT_DIR/.claude/hooks/preserve-crm.sh", "timeout": 3000 }
+        ]
+      }
+    ],
+
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "name": "ea-eod-snapshot", "type": "command", "command": "$GEMINI_PROJECT_DIR/.claude/hooks/eod-snapshot.sh", "timeout": 5000 }
+        ]
+      }
+    ]
+  }
+}

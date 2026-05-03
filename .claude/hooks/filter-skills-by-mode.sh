@@ -7,11 +7,8 @@ HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$HOOK_DIR/lib/common.sh"
 
 payload="$(cat)"
-tool_name="$(echo "$payload" | jq -r '.tool_name // .toolName // empty')"
-# Some tool calls embed a sub-skill or sub-agent identifier
-sub="$(echo "$payload" | jq -r '
-  .tool_input.subagent_type // .tool_input.skill // .tool_input.skill_name // empty
-' 2>/dev/null || echo "")"
+tool_name="$(ea_payload_tool_name "$payload")"
+sub="$(ea_payload_sub "$payload")"
 
 if [ ! -f "$EA_STATE" ]; then ea_passthrough; exit 0; fi
 mode="$(jq -r '.mode.current' "$EA_STATE")"
@@ -19,7 +16,7 @@ mode="$(jq -r '.mode.current' "$EA_STATE")"
 # Helper: is this a Skill/Agent call we care about?
 is_orchestration_call=false
 case "$tool_name" in
-  Skill|Agent|Task) is_orchestration_call=true ;;
+  Skill|Agent|Task|skill|agent|invoke_skill|invoke_subagent|run_skill) is_orchestration_call=true ;;
 esac
 
 case "$mode" in

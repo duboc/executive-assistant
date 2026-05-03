@@ -7,7 +7,7 @@ HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$HOOK_DIR/lib/common.sh"
 
 payload="$(cat)"
-sub="$(echo "$payload" | jq -r '.tool_input.subagent_type // .tool_input.skill // empty')"
+sub="$(ea_payload_sub "$payload")"
 
 case "$sub" in
   meeting-debriefer|draft-composer)
